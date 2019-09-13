@@ -5,7 +5,7 @@
 #include <vector>
 #include <regex>
 
-#include "bro-config.h"
+#include "zeek-config.h"
 
 #include "NetVar.h"
 #include "threading/SerialTypes.h"
@@ -18,34 +18,25 @@ using namespace writer;
 using threading::Value;
 using threading::Field;
 
-PostgreSQL::PostgreSQL(WriterFrontend* frontend) : WriterBackend(frontend)
-	{
-	io = unique_ptr<threading::formatter::Ascii>(new threading::formatter::Ascii(this, threading::formatter::Ascii::SeparatorInfo()));
+PostgreSQL::PostgreSQL(WriterFrontend* frontend) : WriterBackend(frontend) {
 
-	default_hostname.assign(
-		(const char*) BifConst::LogPostgres::default_hostname->Bytes(),
-		BifConst::LogPostgres::default_hostname->Len()
-		);
-
-	default_dbname.assign(
-		(const char*) BifConst::LogPostgres::default_dbname->Bytes(),
-		BifConst::LogPostgres::default_dbname->Len()
-		);
-
-	default_port = BifConst::LogPostgres::default_port;
+	io = unique_ptr<threading::formatter::Ascii>(
+		new threading::formatter::Ascii(
+			this,
+			threading::formatter::Ascii::SeparatorInfo()
+		)
+	);
 
 	ignore_errors = false;
-	bytea_instead_text = false;
-	}
+}
 
-PostgreSQL::~PostgreSQL()
-	{
-	if ( conn != 0 )
+PostgreSQL::~PostgreSQL() {
+	if ( conn != 0 ) {
 		PQfinish(conn);
 	}
+}
 
-string PostgreSQL::GetTableType(int arg_type, int arg_subtype)
-	{
+string PostgreSQL::GetTableType(int arg_type, int arg_subtype) {
 	string type;
 
 	switch ( arg_type ) {
@@ -84,8 +75,6 @@ string PostgreSQL::GetTableType(int arg_type, int arg_subtype)
 	case TYPE_FILE:
 	case TYPE_FUNC:
 		type = "TEXT";
-		if ( bytea_instead_text )
-			type = "BYTEA";
 		break;
 
 	case TYPE_TABLE:
@@ -102,13 +91,12 @@ string PostgreSQL::GetTableType(int arg_type, int arg_subtype)
 }
 
 // preformat the insert string that we only need to create once during our lifetime
-bool PostgreSQL::CreateInsert(int num_fields, const Field* const * fields, std::string add_string)
-	{
-	string names = "INSERT INTO "+table+" ( ";
+bool PostgreSQL::CreateInsert(int num_fields, const Field* const * fields) {
+
+	string names = "INSERT INTO " + table + " ( ";
 	string values("VALUES (");
 
-	for ( int i = 0; i < num_fields; ++i )
-		{
+	for ( int i = 0; i < num_fields; ++i ) {
 		string fieldname = EscapeIdentifier(fields[i]->name);
 		if ( fieldname.empty() )
 			return false;
@@ -121,102 +109,66 @@ bool PostgreSQL::CreateInsert(int num_fields, const Field* const * fields, std::
 
 		names += fieldname;
 		values += "$" + std::to_string(i+1);
-		}
+	}
 
-	insert = names + ") " + values + ") " + add_string + ";";
+	insert = names + ") " + values + ") ;";
 
 	return true;
-	}
+}
 
-string PostgreSQL::LookupParam(const WriterInfo& info, const string name) const
-	{
+string PostgreSQL::LookupParam(const WriterInfo& info, const string name) const {
 	map<const char*, const char*>::const_iterator it = info.config.find(name.c_str());
-	if ( it == info.config.end() )
+
+	if ( it == info.config.end() ) {
 		return string();
-	else
+	} else {
 		return it->second;
 	}
+}
 
 // note - EscapeIdentifier is replicated in reader
-string PostgreSQL::EscapeIdentifier(const char* identifier)
-	{
+string PostgreSQL::EscapeIdentifier(const char* identifier) {
 	char* escaped = PQescapeIdentifier(conn, identifier, strlen(identifier));
-	if ( escaped == nullptr )
-		{
-		Error(Fmt("Error while escaping identifier '%s': %s", identifier, PQerrorMessage(conn)));
+
+	if ( escaped == nullptr ) {
+		Error(Fmt("Error while escaping identifier '%s': %s",
+			  identifier, PQerrorMessage(conn)));
 		return string();
-		}
+	}
+
 	string out = escaped;
 	PQfreemem(escaped);
 
 	return out;
-	}
+}
 
 bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
-			    const Field* const * fields)
-	{
+		const Field* const * fields) {
+
 	string conninfo = LookupParam(info, "conninfo");
-	if ( conninfo.empty() )
-		{
-		string hostname = LookupParam(info, "hostname");
-		if ( hostname.empty() )
-			{
-			MsgThread::Info(Fmt("hostname configuration option not found. Defaulting to %s", default_hostname.c_str()));
-			hostname = default_hostname;
-			}
-
-		string dbname = LookupParam(info, "dbname");
-		if ( dbname.empty() )
-			{
-			if ( default_dbname == "" )
-				{
-				MsgThread::Error(Fmt("dbname configuration option not found."));
-				return false;
-				}
-			else
-				{
-				MsgThread::Error(Fmt("dbname configuration option not found. Defaulting to %s", default_dbname.c_str()));
-				dbname = default_dbname;
-				}
-			}
-
-		conninfo = string("host = ") + hostname + " dbname = " + dbname;
-
-		string port = LookupParam(info, "port");
-		if ( ! port.empty() )
-			conninfo += " port = " + port;
-		else if ( default_port >= 0 )
-			conninfo += Fmt(" port = %d", default_port);
-		}
-
-	string add_string = LookupParam(info, "sql_addition");
 
 	string errorhandling = LookupParam(info, "continue_on_errors");
-	if ( !errorhandling.empty() && errorhandling == "T" )
+	if ( !errorhandling.empty() && errorhandling == "T" ) {
 		ignore_errors = true;
-
-	string bytea = LookupParam(info, "bytea_instead_of_text");
-	if ( !bytea.empty() && bytea == "T" )
-		bytea_instead_text = true;
+	}
 
 	conn = PQconnectdb(conninfo.c_str());
 
-	if ( PQstatus(conn) != CONNECTION_OK )
-		{
-		Error(Fmt("Could not connect to pg (%s): %s", conninfo.c_str(), PQerrorMessage(conn)));
+	if ( PQstatus(conn) != CONNECTION_OK ) {
+		Error(Fmt("Could not connect to pg (%s): %s",
+			conninfo.c_str(), PQerrorMessage(conn)));
 		return false;
-		}
+	}
 
 	table = EscapeIdentifier(info.path);
-	if ( table.empty() )
+	if ( table.empty() ) {
 		return false;
+	}
 
-
-	string create = "CREATE TABLE IF NOT EXISTS "+table+" (\n"
+	string create = "CREATE TABLE IF NOT EXISTS " + table + " (\n"
 		"id SERIAL UNIQUE NOT NULL";
 
-	for ( int i = 0; i < num_fields; ++i )
-		{
+	for ( int i = 0; i < num_fields; ++i ) {
 		const Field* field = fields[i];
 
 		create += ",\n";
@@ -228,41 +180,33 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 
 		string type = GetTableType(field->type, field->subtype);
 
-		create += " "+type;
-		/* if ( !field->optional ) {
-			create += " NOT NULL";
-		} */
-		}
+		create += " " + type;
+	}
 
 	create += "\n);";
 
 	PGresult *res = PQexec(conn, create.c_str());
-	if ( PQresultStatus(res) != PGRES_COMMAND_OK)
-		{
+	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
 		Error(Fmt("Create command failed: %s\n", PQerrorMessage(conn)));
 		return false;
-		}
-
-	return CreateInsert(num_fields, fields, add_string);
 	}
 
-bool PostgreSQL::DoFlush(double network_time)
-	{
+	return CreateInsert(num_fields, fields);
+}
+
+bool PostgreSQL::DoFlush(double network_time) {
 	return true;
-	}
+}
 
-bool PostgreSQL::DoFinish(double network_time)
-	{
+bool PostgreSQL::DoFinish(double network_time) {
 	return true;
-	}
+}
 
-bool PostgreSQL::DoHeartbeat(double network_time, double current_time)
-	{
+bool PostgreSQL::DoHeartbeat(double network_time, double current_time) {
 	return true;
-	}
+}
 
-std::tuple<bool, string, int> PostgreSQL::CreateParams(const Value* val)
-	{
+std::tuple<bool, string, int> PostgreSQL::CreateParams(const Value* val) {
 	static std::regex curly_re("\\\\|\"");
 
 	if ( ! val->present )
@@ -308,63 +252,61 @@ std::tuple<bool, string, int> PostgreSQL::CreateParams(const Value* val)
 	case TYPE_STRING:
 	case TYPE_FILE:
 	case TYPE_FUNC:
-		retval = string(val->val.string_val.data, val->val.string_val.length);
+		retval = string(val->val.string_val.data,
+				val->val.string_val.length);
 		break;
 
 	case TYPE_TABLE:
-	case TYPE_VECTOR:
-		{
-		bro_int_t size;
-		Value** vals;
+	case TYPE_VECTOR: {
+			bro_int_t size;
+			Value** vals;
 
-		string out("{");
-		retlength = 1;
+			string out("{");
+			retlength = 1;
 
-		if ( val->type == TYPE_TABLE )
-			{
-			size = val->val.set_val.size;
-			vals = val->val.set_val.vals;
-			}
-		else
-			{
-			size = val->val.vector_val.size;
-			vals = val->val.vector_val.vals;
+			if ( val->type == TYPE_TABLE ) {
+				size = val->val.set_val.size;
+				vals = val->val.set_val.vals;
+			} else {
+				size = val->val.vector_val.size;
+				vals = val->val.vector_val.vals;
 			}
 
-		if ( ! size )
-			return std::make_tuple(false, string(), 0);
+			if ( ! size ) {
+				return std::make_tuple(false, string(), 0);
+			}
 
-		for ( int i = 0; i < size; ++i )
-			{
-			if ( i != 0 )
-				out += ", ";
+			for ( int i = 0; i < size; ++i ) {
+				if ( i != 0 )
+					out += ", ";
 
-			auto res = CreateParams(vals[i]);
-			if ( std::get<0>(res) == false )
-				{
-				out += "NULL";
-				continue;
+				auto res = CreateParams(vals[i]);
+				if ( std::get<0>(res) == false ) {
+					out += "NULL";
+					continue;
 				}
 
-			string resstr = std::get<1>(res);
-			TypeTag type = vals[i]->type;
-			// for all numeric types, we do not need escaping
-			if ( type == TYPE_BOOL || type == TYPE_INT || type == TYPE_COUNT ||
-					type == TYPE_COUNTER || type == TYPE_PORT || type == TYPE_TIME ||
-					type == TYPE_INTERVAL || type == TYPE_DOUBLE )
-				out += resstr;
-			else
-				{
-				string escaped = std::regex_replace(resstr, curly_re, "\\$&");
-				out += "\"" + escaped + "\"";
-				retlength += 2+escaped.length();
+				string resstr = std::get<1>(res);
+				TypeTag type = vals[i]->type;
+				// for all numeric types, we do not need escaping
+				if ( type == TYPE_BOOL || type == TYPE_INT ||
+						type == TYPE_COUNT || type == TYPE_COUNTER ||
+						type == TYPE_PORT || type == TYPE_TIME ||
+						type == TYPE_INTERVAL || type == TYPE_DOUBLE ) {
+					out += resstr;
+				} else {
+					string escaped = std::regex_replace(
+						resstr, curly_re, "\\$&");
+					out += "\"" + escaped + "\"";
+					retlength += 2+escaped.length();
 				}
 			}
 
-		out += "}";
-		retlength += 1;
-		retval = out;
-		break;
+			out += "}";
+			retlength += 1;
+			retval = out;
+
+			break;
 		}
 
 	default:
@@ -372,71 +314,65 @@ std::tuple<bool, string, int> PostgreSQL::CreateParams(const Value* val)
 		return std::make_tuple(false, string(), 0);
 	}
 
-	if ( retlength == 0 )
+	if ( retlength == 0 ) {
 		retlength = retval.length();
-
-	return std::make_tuple(true, retval, retlength);
 	}
 
-bool PostgreSQL::DoWrite(int num_fields, const Field* const* fields, Value** vals)
-	{
+	return std::make_tuple(true, retval, retlength);
+}
+
+bool PostgreSQL::DoWrite(int num_fields,
+		const Field* const* fields, Value** vals) {
+
 	vector<std::tuple<bool, string, int>> params; // vector in which we compile the string representation of characters
 
-	for ( int i = 0; i < num_fields; ++i )
+	for ( int i = 0; i < num_fields; ++i ) {
 		params.push_back(CreateParams(vals[i]));
+	}
 
 	vector<const char*> params_char; // vector in which we compile the character pointers that we
 	// then pass to PQexecParams. These do not have to be cleaned up because the srings will be
 	// cleaned up automatically.
+	//
 	vector<int> params_length; // vector in which we compile the lengths of the parameters that we
 	// then pass to PQexecParams
 
-	for ( auto &i: params )
-		{
-		if ( std::get<0>(i) == false)
+	for ( auto &i: params ) {
+		if ( std::get<0>(i) == false) {
 			params_char.push_back(nullptr); // null pointer is accepted to signify NULL in parameters
-		else
+		} else {
 			params_char.push_back(std::get<1>(i).c_str());
+		}
 
 		params_length.push_back(std::get<2>(i));
-		}
+	}
 
 	assert( params_char.size() == num_fields );
 	assert( params_length.size() == num_fields );
 
 	// & of vector is legal - according to current STL standard, vector has to be saved in consecutive memory.
-	PGresult *res = PQexecParams(conn,
-			insert.c_str(),
-			params_char.size(),
-			NULL,
-			&params_char[0],
-			&params_length[0],
-			NULL,
-			0);
+	PGresult *res = PQexecParams(conn, insert.c_str(), params_char.size(),
+				     NULL, &params_char[0], &params_length[0], NULL, 0);
 
-	if ( PQresultStatus(res) != PGRES_COMMAND_OK)
-		{
+	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
 		Error(Fmt("Command failed: %s\n", PQerrorMessage(conn)));
 
-		if ( ! ignore_errors )
-			{
+		if ( ! ignore_errors ) {
 			PQclear(res);
 			return false;
-			}
 		}
+	}
 
 	PQclear(res);
 	return true;
-	}
+}
 
-bool PostgreSQL::DoRotate(const char* rotated_path, double open, double close, bool terminating)
-	{
+bool PostgreSQL::DoRotate(const char* rotated_path, double open,
+		double close, bool terminating) {
 	FinishedRotation();
 	return true;
-	}
+}
 
-bool PostgreSQL::DoSetBuf(bool enabled)
-	{
-	// Nothing to do.
+bool PostgreSQL::DoSetBuf(bool enabled) {
 	return true;
-	}
+}

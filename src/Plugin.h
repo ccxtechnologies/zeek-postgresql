@@ -1,22 +1,19 @@
-
-#ifndef BRO_PLUGIN_BRO_POSTGRES
-#define BRO_PLUGIN_BRO_POSTGRES
+#ifndef ZEEK_PLUGIN_ZEEK_POSTGRES
+#define ZEEK_PLUGIN_ZEEK_POSTGRES
 
 #include <plugin/Plugin.h>
 
 namespace plugin {
-namespace Johanna_PostgreSQL {
+	namespace CCX_PostgreSQL {
 
-class Plugin : public ::plugin::Plugin
-{
-protected:
-	// Overridden from plugin::Plugin.
-	virtual plugin::Configuration Configure();
-};
+		class Plugin : public ::plugin::Plugin {
+			protected:
+				// Overridden from plugin::Plugin.
+				virtual plugin::Configuration Configure();
+		};
 
-extern Plugin plugin;
-
-}
+		extern Plugin plugin;
+	}
 }
 
 #endif
