@@ -8,7 +8,8 @@
 #include <memory> // for unique_ptr
 
 #include "logging/WriterBackend.h"
-#include "threading/formatters/Ascii.h"
+#include "threading/formatters/JSON.h"
+
 #include "libpq-fe.h"
 
 namespace logging {
@@ -53,11 +54,13 @@ namespace logging {
 			PGconn *conn;
 
 			string table;
+			string data_column;
 			string insert;
 
 			bool ignore_errors;
 
-			std::unique_ptr<threading::formatter::Ascii> io;
+			threading::formatter::Formatter* formatter;
+			ODesc desc;
 		};
 
 	}
