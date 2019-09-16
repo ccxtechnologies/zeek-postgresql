@@ -3,7 +3,7 @@ Zeek PostgreSQL JSON Databases Writer Plugin
 
 This plugin is based on [zeek-postgres](https://github.com/0xxon/zeek-postgresql).
 
-It makes some updates to the zeek support, removes the Read feature and changes
+It makes some updates to the zeek support, removes the read feature, and changes
 the data write format to JSON.
 
 Installation
@@ -15,7 +15,7 @@ either using bro-pkg, or manually via the command-line.
 To install the plugin using the Zeek Package Browser::
 
 ```console
-# zkg install ccxtechnologies/zeek-postgresql
+# zkg install ccxtechnologies/zeek-postgresql-json
 ```
 
 To install manually from the cloned repository::
@@ -27,7 +27,7 @@ To install manually from the cloned repository::
 Use bro -N to verify correct installation::
 
 ```console
-# bro -N CCX::PostgreSQL
+# bro -N CCX::PostgreSQLJSON
 CCX::PostgreSQL - PostgreSQL json log writer (dynamic, version 1.0)
 ```
 

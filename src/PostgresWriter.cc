@@ -20,42 +20,14 @@ using threading::Value;
 using threading::Field;
 
 PostgreSQL::PostgreSQL(WriterFrontend* frontend) : WriterBackend(frontend) {
-
 	formatter = new threading::formatter::JSON(this,
 			threading::formatter::JSON::TS_EPOCH);
-	ignore_errors = false;
 }
 
 PostgreSQL::~PostgreSQL() {
 	if ( conn != 0 ) {
 		PQfinish(conn);
 	}
-}
-
-// preformat the insert string that we only need to create once during our lifetime
-bool PostgreSQL::CreateInsert(int num_fields, const Field* const * fields) {
-
-	string names = "INSERT INTO " + table + " ( ";
-	string values("VALUES (");
-
-	for ( int i = 0; i < num_fields; ++i ) {
-		string fieldname = EscapeIdentifier(fields[i]->name);
-		if ( fieldname.empty() )
-			return false;
-
-		if ( i != 0 )
-			{
-			values += ", ";
-			names += ", ";
-			}
-
-		names += fieldname;
-		values += "$" + std::to_string(i+1);
-	}
-
-	insert = names + ") " + values + ") ;";
-
-	return true;
 }
 
 string PostgreSQL::LookupParam(const WriterInfo& info, const string name) const {
@@ -87,12 +59,11 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 		const Field* const * fields) {
 
 	string conninfo = LookupParam(info, "conninfo");
-	string table_format = LookupParam(info, "format");
 
-	string errorhandling = LookupParam(info, "continue_on_errors");
-	if ( !errorhandling.empty() && errorhandling == "T" ) {
-		ignore_errors = true;
-	}
+	columns = LookupParam(info, "columns");
+	values = LookupParam(info, "values");
+	indexes = LookupParam(info, "indexes");
+	schema = LookupParam(info, "schema");
 
 	conn = PQconnectdb(conninfo.c_str());
 
@@ -106,11 +77,12 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 	if ( table.empty() ) {
 		return false;
 	}
+	table = schema + "." + table;
 
-	data_column = LookupParam(info, "datacolumn");
+	string create = "CREATE TABLE IF NOT EXISTS " +
+		table + " (\n" + columns + ");";
 
-	string create = "CREATE TABLE IF NOT EXISTS " + table +
-		" (\n" + table_format + ");";
+	cout << create;
 
 	PGresult *res = PQexec(conn, create.c_str());
 	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -118,7 +90,12 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 		return false;
 	}
 
-	return CreateInsert(num_fields, fields);
+	insert = "INSERT INTO " + table + " ( " + indexes + " ) " +
+		"VALUES ( " + values + " );";
+
+	cout << insert;
+
+	return true;
 }
 
 bool PostgreSQL::DoFlush(double network_time) {
@@ -141,28 +118,13 @@ bool PostgreSQL::DoWrite(int num_fields,
 		return false;
 	}
 
-	vector<std::tuple<bool, string, int>> params;
-	vector<const char*> params_char;
-	vector<int> params_length;
+	const char* bytes = (const char*)desc.Bytes();
+	int len = desc.Len();
 
-	params.push_back(desc);
+	cout << bytes;
 
-	for ( auto &i: params ) {
-		if ( std::get<0>(i) == false) {
-			params_char.push_back(nullptr); // null pointer is accepted to signify NULL in parameters
-		} else {
-			params_char.push_back(std::get<1>(i).c_str());
-		}
-
-		params_length.push_back(std::get<2>(i));
-	}
-
-	assert( params_char.size() == num_fields );
-	assert( params_length.size() == num_fields );
-
-	PGresult *res = PQexecParams(conn, insert.c_str(), params_char.size(),
-				     NULL, &params_char[0], &params_length[0],
-				     NULL, 0);
+	PGresult *res = PQexecParams(conn, insert.c_str(), 1, NULL,
+				     &bytes, &len, NULL, 0);
 
 	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
 		Error(Fmt("Command failed: %s\n", PQerrorMessage(conn)));

@@ -54,8 +54,12 @@ namespace logging {
 			PGconn *conn;
 
 			string table;
-			string data_column;
 			string insert;
+
+			string columns;
+			string values;
+			string indexes;
+			string schema;
 
 			bool ignore_errors;
 
