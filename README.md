@@ -46,16 +46,22 @@ event zeek_init()
 	$path="conn",
 	$writer=Log::WRITER_POSTGRESQL,
 	$config=table(
-		["conninfo"]="host=127.0.0.1 user=somebody password=password1 dbname=testdb"
+		["conninfo"]="host=127.0.0.1 user=charles password=password dbname=testdb",
+		["schema"]="test_zeek",
+		["columns"]="_id serial PRIMARY KEY, _timestamp timestamp default current_time, _source varchar NOT NULL, data jsonb",
+		["values"]="'test', $1",
+		["indexes"]="_source, data",
 	)
   ];
   Log::add_filter(Conn::LOG, filter);
   }
 ```
 
-This will write to a database named testdb into the table named conn. Note that
-the table will be automatically be created by the PostgreSQL plugin, if it does
-not yet exist. If a table with the specified name already exists, it is used.
+This will create a table conn in the schema test_zeek with the structure defined in columns.
+Data will be written to the indexes columns (all other columns must have defaults) based on
+values, the $1 indicates the column that the json data is written to, the other columns can
+have static values.
+
 
 Configuration Options
 =====================
@@ -65,10 +71,14 @@ passed in $config:
 
 - *conninfo*: connection string using parameter key words as defined in
   https://www.postgresql.org/docs/9.3/static/libpq-connect.html. Can be used
-  to pass usernames, passwords, etc. hostname, port, and dbname are ignored if
-  conninfo is specified.
+  to pass usernames, passwords, etc.
 
   Example: host=127.0.0.1 user=johanna
 
-- *continue_on_errors*: ignore insert errors and do not kill the database
-  connection.
+- *schema*: name of the scehma to insert data into
+
+- *columns*: structure of the table
+
+- *values*: values to write to each column, $1 indicates that the json data from Zeek is written
+
+- *indexes*: columns that values are written into

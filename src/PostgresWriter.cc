@@ -77,23 +77,30 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 	if ( table.empty() ) {
 		return false;
 	}
-	table = schema + "." + table;
 
-	string create = "CREATE TABLE IF NOT EXISTS " +
-		table + " (\n" + columns + ");";
-
-	cout << create;
+	string create = "CREATE SCHEMA IF NOT EXISTS \"" + schema + "\";";
 
 	PGresult *res = PQexec(conn, create.c_str());
 	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
-		Error(Fmt("Create command failed: %s\n", PQerrorMessage(conn)));
+		Error(Fmt("Create schema command failed: %s\n",
+			  PQerrorMessage(conn)));
+		return false;
+	}
+
+	table = schema + "." + table;
+
+	create = "CREATE TABLE IF NOT EXISTS " +
+		table + " (\n" + columns + ");";
+
+	res = PQexec(conn, create.c_str());
+	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {
+		Error(Fmt("Create table command failed: %s\n",
+			  PQerrorMessage(conn)));
 		return false;
 	}
 
 	insert = "INSERT INTO " + table + " ( " + indexes + " ) " +
 		"VALUES ( " + values + " );";
-
-	cout << insert;
 
 	return true;
 }
@@ -120,8 +127,6 @@ bool PostgreSQL::DoWrite(int num_fields,
 
 	const char* bytes = (const char*)desc.Bytes();
 	int len = desc.Len();
-
-	cout << bytes;
 
 	PGresult *res = PQexecParams(conn, insert.c_str(), 1, NULL,
 				     &bytes, &len, NULL, 0);
