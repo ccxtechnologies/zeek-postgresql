@@ -7,6 +7,7 @@
 
 #include <memory> // for unique_ptr
 
+#include "Desc.h"
 #include "logging/WriterBackend.h"
 #include "threading/formatters/JSON.h"
 

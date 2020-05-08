@@ -212,7 +212,6 @@ find_library(PostgreSQL_LIBRARY
  # Help the user find it if we cannot.
  DOC "The ${PostgreSQL_LIBRARY_DIR_MESSAGE}"
 )
-get_filename_component(PostgreSQL_LIBRARY_DIR ${PostgreSQL_LIBRARY} PATH)
 
 if (PostgreSQL_INCLUDE_DIR)
   # Some platforms include multiple pg_config.hs for multi-lib configurations

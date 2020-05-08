@@ -20,6 +20,7 @@ if (PostgreSQL_FOUND)
     bro_plugin_end()
 
     message(STATUS "PostgreSQL includes : ${PostgreSQL_INCLUDE_DIRS}")
+	message(STATUS "PostgreSQL libraries : ${PostgreSQL_LIBRARY_DIRS}")
 else()
     message(FATAL_ERROR "PostgreSQL not found.")
 endif()
