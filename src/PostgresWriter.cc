@@ -30,26 +30,26 @@ PostgreSQL::~PostgreSQL() {
 	}
 }
 
-string PostgreSQL::LookupParam(const WriterInfo& info, const string name) const {
-	map<const char*, const char*>::const_iterator it = info.config.find(name.c_str());
+std::string PostgreSQL::LookupParam(const WriterInfo& info, const std::string name) const {
+	std::map<const char*, const char*>::const_iterator it = info.config.find(name.c_str());
 
 	if ( it == info.config.end() ) {
-		return string();
+		return std::string();
 	} else {
 		return it->second;
 	}
 }
 
-string PostgreSQL::EscapeIdentifier(const char* identifier) {
+std::string PostgreSQL::EscapeIdentifier(const char* identifier) {
 	char* escaped = PQescapeIdentifier(conn, identifier, strlen(identifier));
 
 	if ( escaped == nullptr ) {
 		Error(Fmt("Error while escaping identifier '%s': %s",
 			  identifier, PQerrorMessage(conn)));
-		return string();
+		return std::string();
 	}
 
-	string out = escaped;
+	std::string out = escaped;
 	PQfreemem(escaped);
 
 	return out;
@@ -58,7 +58,7 @@ string PostgreSQL::EscapeIdentifier(const char* identifier) {
 bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 		const Field* const * fields) {
 
-	string conninfo = LookupParam(info, "conninfo");
+	std::string conninfo = LookupParam(info, "conninfo");
 
 	columns = LookupParam(info, "columns");
 	values = LookupParam(info, "values");
@@ -78,7 +78,7 @@ bool PostgreSQL::DoInit(const WriterInfo& info, int num_fields,
 		return false;
 	}
 
-	string create = "CREATE SCHEMA IF NOT EXISTS \"" + schema + "\";";
+	std::string create = "CREATE SCHEMA IF NOT EXISTS \"" + schema + "\";";
 
 	PGresult *res = PQexec(conn, create.c_str());
 	if ( PQresultStatus(res) != PGRES_COMMAND_OK) {

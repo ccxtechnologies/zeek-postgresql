@@ -1,6 +1,0 @@
-[package]
-description = A PostgreSQL JSON writer for Zeek.
-tags = zeek plugin, PostgreSQL, writer
-build_command = ( ./configure --bro-dist=%(bro_dist)s --with-postgresql-inc=`pg_config --includedir` --with-postgresql-server-inc=`pg_config --includedir-server`  --with-postgresql-lib=`pg_config --libdir` && make )
-plugin_dir = build
-version = master

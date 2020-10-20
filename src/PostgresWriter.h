@@ -5,6 +5,7 @@
 #ifndef LOGGING_WRITER_POSTGRES_H
 #define LOGGING_WRITER_POSTGRES_H
 
+#include <string>
 #include <memory> // for unique_ptr
 
 #include "Desc.h"
@@ -43,24 +44,24 @@ namespace logging {
 				double current_time) override;
 
 		private:
-			string LookupParam(const WriterInfo& info,
-				const string name) const;
+			std::string LookupParam(const WriterInfo& info,
+				const std::string name) const;
 
 			// note - EscapeIdentifier is replicated in reader
-			string EscapeIdentifier(const char* identifier);
-			std::tuple<bool, string, int> CreateParams(const threading::Value* val);
-			string GetTableType(int, int);
+			std::string EscapeIdentifier(const char* identifier);
+			std::tuple<bool, std::string, int> CreateParams(const threading::Value* val);
+			std::string GetTableType(int, int);
 			bool CreateInsert(int num_fields, const threading::Field* const* fields);
 
 			PGconn *conn;
 
-			string table;
-			string insert;
+			std::string table;
+			std::string insert;
 
-			string columns;
-			string values;
-			string indexes;
-			string schema;
+			std::string columns;
+			std::string values;
+			std::string indexes;
+			std::string schema;
 
 			bool ignore_errors;
 

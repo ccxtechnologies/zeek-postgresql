@@ -10,7 +10,7 @@ namespace plugin {
 
 using namespace plugin::CCX_PostgreSQL;
 
-plugin::Configuration Plugin::Configure() {
+zeek::plugin::Configuration Plugin::Configure() {
 	AddComponent(
 		new ::logging::Component(
 			"PostgreSQL",
@@ -18,7 +18,7 @@ plugin::Configuration Plugin::Configure() {
 		)
 	);
 
-	plugin::Configuration config;
+	zeek::plugin::Configuration config;
 	config.name = "CCX::PostgreSQL";
 	config.description = "PostgreSQL log writer";
 	config.version.major = 1;
