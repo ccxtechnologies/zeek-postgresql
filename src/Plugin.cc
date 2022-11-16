@@ -12,7 +12,7 @@ using namespace plugin::CCX_PostgreSQL;
 
 zeek::plugin::Configuration Plugin::Configure() {
 	AddComponent(
-		new ::logging::Component(
+		new zeek::logging::Component(
 			"PostgreSQL",
 			::logging::writer::PostgreSQL::Instantiate
 		)

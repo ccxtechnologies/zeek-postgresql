@@ -5,23 +5,24 @@
 #include <vector>
 #include <regex>
 
-#include "zeek-config.h"
+#include "zeek/zeek-config.h"
 
-#include "NetVar.h"
-#include "threading/SerialTypes.h"
-#include "threading/formatters/JSON.h"
+#include "zeek/NetVar.h"
+#include "zeek/threading/SerialTypes.h"
+#include "zeek/threading/formatters/JSON.h"
 
 #include "PostgresWriter.h"
 #include "postgresql.bif.h"
 
 using namespace logging;
 using namespace writer;
-using threading::Value;
-using threading::Field;
+using zeek::threading::Value;
+using zeek::threading::Field;
 
-PostgreSQL::PostgreSQL(WriterFrontend* frontend) : WriterBackend(frontend) {
-	formatter = new threading::formatter::JSON(this,
-			threading::formatter::JSON::TS_EPOCH);
+PostgreSQL::PostgreSQL(zeek::logging::WriterFrontend* frontend) : WriterBackend(frontend) {
+	formatter = std::unique_ptr<zeek::threading::formatter::JSON>(
+					new zeek::threading::formatter::JSON(this,
+			zeek::threading::formatter::JSON::TS_EPOCH));
 }
 
 PostgreSQL::~PostgreSQL() {
